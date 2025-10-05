@@ -63,7 +63,7 @@ public class SshHttpProxyController {
         try {
             response.setStatus(Integer.parseInt(statusParts[1]));
         } catch (Exception e) {
-            response.setStatus(200);
+            response.setStatus(502);
             return;
         }
 
