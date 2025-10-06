@@ -32,25 +32,64 @@ public class TunnelController {
         }
     }
 
-    @RequestMapping(value = "/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
-    public ResponseEntity<String> handleTunnelRequest(
+    @RequestMapping(value = "/airflow/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
+    public ResponseEntity<String> handleTunnelRequestAirflow(
             @RequestBody(required = false) String body,
             HttpMethod method,
             HttpServletRequest request) {
         
         try {
-            String path = request.getRequestURI().substring("/tunnel".length());
+            String path = request.getRequestURI().substring("/tunnel/airflow".length());
             
             HttpHeaders headers = new HttpHeaders();
             Collections.list(request.getHeaderNames()).forEach(headerName -> 
                 headers.put(headerName, Collections.list(request.getHeaders(headerName)))
             );
 
-            String targetIp = "192.168.1.171"; // IP do servidor remoto
-            int targetPort = 8087; // Porta do serviço no servidor remoto
+            String targetIp = "56.124.51.250"; // IP do servidor remoto
+            int targetPort = 8080; // Porta do serviço no servidor remoto
 
-            if (!isPortOpen(targetIp, targetPort, 2000)) {
-                return new ResponseEntity<>("Serviço de destino indisponível no IP/Porta especificados.", HttpStatus.SERVICE_UNAVAILABLE);
+            if (!isPortOpen(targetIp, 22, 2000)) {
+                return new ResponseEntity<>("Servidor SSH indisponível.", HttpStatus.SERVICE_UNAVAILABLE);
+            }
+
+            if (!sshTunnelService.checkRemotePortOpen(InetAddress.getByName(targetIp), targetPort, 2000)) {
+                return new ResponseEntity<>("Porta do serviço remoto fechada.", HttpStatus.SERVICE_UNAVAILABLE);
+            }
+
+            return sshTunnelService.forwardRequest(path, method, body, headers, InetAddress.getByName(targetIp), targetPort);
+        } catch (JSchException | IOException e) {
+            e.printStackTrace();
+            return new ResponseEntity<>("Falha ao estabelecer o túnel SSH: " + e.getMessage(), HttpStatus.SERVICE_UNAVAILABLE);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>("Erro interno ao processar a requisição: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @RequestMapping(value = "/vscode/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
+    public ResponseEntity<String> handleTunnelRequestVSCode(
+            @RequestBody(required = false) String body,
+            HttpMethod method,
+            HttpServletRequest request) {
+        
+        try {
+            String path = request.getRequestURI().substring("/tunnel/vscode".length());
+            
+            HttpHeaders headers = new HttpHeaders();
+            Collections.list(request.getHeaderNames()).forEach(headerName -> 
+                headers.put(headerName, Collections.list(request.getHeaders(headerName)))
+            );
+
+            String targetIp = "56.124.51.250"; // IP do servidor remoto
+            int targetPort = 8888; // Porta do serviço no servidor remoto
+
+            if (!isPortOpen(targetIp, 22, 2000)) {
+                return new ResponseEntity<>("Servidor SSH indisponível.", HttpStatus.SERVICE_UNAVAILABLE);
+            }
+
+            if (!sshTunnelService.checkRemotePortOpen(InetAddress.getByName(targetIp), targetPort, 2000)) {
+                return new ResponseEntity<>("Porta do serviço remoto fechada.", HttpStatus.SERVICE_UNAVAILABLE);
             }
 
             return sshTunnelService.forwardRequest(path, method, body, headers, InetAddress.getByName(targetIp), targetPort);

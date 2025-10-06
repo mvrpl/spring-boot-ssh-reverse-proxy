@@ -9,9 +9,12 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.InetAddress;
+import java.io.InputStream;
 
 @Service
 public class SshTunnelService {
+
+    private static final String LOCALHOST = "127.0.0.1";
 
     @Value("${ssh.port}")
     private int sshPort;
@@ -21,6 +24,34 @@ public class SshTunnelService {
 
     @Value("${ssh.privatekey.path}")
     private String privateKeyPath;
+
+    public boolean checkRemotePortOpen(InetAddress remoteHost, int remotePort, int timeoutMillis) throws JSchException, IOException, InterruptedException {
+        Session session = this.connectSSH(remoteHost, this.sshPort);
+        session.connect(timeoutMillis);
+
+        String command = String.format("nc -z 127.0.0.1 %d", remotePort);
+
+        ChannelExec channel = (ChannelExec) session.openChannel("exec");
+        channel.setCommand(command);
+        channel.setInputStream(null);
+
+        channel.connect();
+
+        Thread.sleep(500); // Aguarda um pouco para o comando ser executado
+
+        channel.disconnect();
+        session.disconnect();
+
+        return channel.getExitStatus() == 0;
+    }
+
+    private Session connectSSH(InetAddress ipAddress, int port) throws JSchException {
+        JSch jsch = new JSch();
+        jsch.addIdentity(this.privateKeyPath);
+        Session session = jsch.getSession(sshUser, ipAddress.getHostAddress(), port);
+        session.setConfig("StrictHostKeyChecking", "no");
+        return session;
+    }
 
     /**
      * Encaminha uma requisição HTTP através de um túnel SSH.
@@ -33,23 +64,15 @@ public class SshTunnelService {
      * @return A resposta do serviço de destino.
      */
     public ResponseEntity<String> forwardRequest(String path, HttpMethod method, String requestBody, HttpHeaders headers, InetAddress remoteHost, int remotePort) throws JSchException, IOException {
-        JSch jsch = new JSch();
-        jsch.addIdentity(this.privateKeyPath /*, "optional-passphrase" */);
-        Session session = jsch.getSession(this.sshUser, remoteHost.getHostAddress(), this.sshPort);
-        session.setConfig("StrictHostKeyChecking", "no");
-        session.connect();
-
-        int localPort;
-        try (ServerSocket serverSocket = new ServerSocket(0)) {
-            localPort = serverSocket.getLocalPort();
-        }
-
-        session.setPortForwardingL(localPort, "127.0.0.1", remotePort);
+        Session session = this.connectSSH(remoteHost, this.sshPort);
+        session.connect(2000);
         
         try {
+            int localPort = session.setPortForwardingL(0, LOCALHOST, remotePort);
+
             RestTemplate restTemplate = new RestTemplate();
-            String targetUrl = "http://127.0.0.1:" + localPort + path;
-            
+            String targetUrl = "http://" + LOCALHOST + ":" + localPort + path;
+
             HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
             
             System.out.println("Forwarding request to: " + targetUrl);
