@@ -28,6 +28,8 @@ public class SshTunnelService {
      * @param method O método HTTP (GET, POST, etc.).
      * @param requestBody O corpo da requisição (para POST, PUT, etc.).
      * @param headers Os cabeçalhos da requisição original.
+     * @param remoteHost O endereço IP do servidor remoto.
+     * @param remotePort A porta do serviço no servidor remoto.
      * @return A resposta do serviço de destino.
      */
     public ResponseEntity<String> forwardRequest(String path, HttpMethod method, String requestBody, HttpHeaders headers, InetAddress remoteHost, int remotePort) throws JSchException, IOException {
