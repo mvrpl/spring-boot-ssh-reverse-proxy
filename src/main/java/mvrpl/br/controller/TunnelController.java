@@ -35,7 +35,7 @@ public class TunnelController {
             );
 
             return sshTunnelService.forwardRequest(path, method, body, headers, InetAddress.getByName("192.168.1.171"), 8087);
-        } catch (IOException e) {
+        } catch (JSchException | IOException e) {
             e.printStackTrace();
             return new ResponseEntity<>("Falha ao estabelecer o túnel SSH: " + e.getMessage(), HttpStatus.SERVICE_UNAVAILABLE);
         } catch (Exception e) {
