@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 
-@ComponentScan({"mvrpl.br.controller"})
+@ComponentScan({"mvrpl.br.controller", "mvrpl.br.service"})
 @EnableAutoConfiguration
 @SpringBootApplication
 public class ReverseProxyDemoApplication {
